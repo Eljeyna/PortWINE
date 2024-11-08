@@ -2,12 +2,12 @@
 # Author: chal55rus (Sergey P.), cefeiko, Castro-Fidel (linux-gaming.ru)
 ##########################################################################
 pw_shutdown_please () {
-    if [ "$PW_USE_RUNTIME" != 1 ]
+    if [[ "$PW_USE_RUNTIME" != 1 ]]
     then echo "PW_USE_RUNTIME: `echo $PW_USE_RUNTIME`"
     else
         sleep 10
         while true ; do
-            if  [ -z "`ps aux | grep -v grep | grep -wm 1 "$1" | awk '{print $2}'`" ] && [ ! -z "`pgrep wrap | head -n 1`" ]; then
+            if  [[ -z "`ps aux | grep -v grep | grep -wm 1 "$1" | awk '{print $2}'`" ]] && [[ -n "`pgrep wrap | head -n 1`" ]] ; then
                 echo -e "PID "$1" not found"
                 sleep 1
             else
@@ -24,7 +24,7 @@ export PW_AUTOINSTALL_EXE="${PW_USER_TEMP}/GameforgeInstaller.exe"
 start_portwine
 if try_download "https://raw.githubusercontent.com/WarfaceZ/lutris-clients/master/GameforgeInstaller.exe" "${PW_AUTOINSTALL_EXE}"
 then
-    pw_start_progress_bar_block "Gameforge-Client."
+    pw_start_progress_bar_install_game "Gameforge-Client."
     pw_shutdown_please SparkWebHelper.exe &
     pw_run "${PW_AUTOINSTALL_EXE}"
     portwine_exe="$WINEPREFIX/drive_c/Program Files (x86)/GameforgeClient/gfclient.exe"

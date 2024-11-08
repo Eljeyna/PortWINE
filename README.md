@@ -77,7 +77,7 @@ exit
 
 
 * **Ubuntu 24.04**, **Debian 12**, **Linux Mint 21.x**, and **Deepin**:
-  [portproton_1.7-2_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.7-2_amd64/portproton_1.7-2_amd64.deb)
+  [portproton_1.7-3_amd64.deb](https://github.com/Castro-Fidel/PortProton_dpkg/releases/download/portproton_1.7-3_amd64/portproton_1.7-3_amd64.deb)
 
 * **Arch Linux** and derivatives (Manjaro, Garuda, etc.):
   [AUR](https://aur.archlinux.org/packages/portproton)
@@ -103,7 +103,7 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 flatpak install flathub ru.linux_gaming.PortProton
 ```
 
-## Universal (manual) installation
+<details><summary><b>Universal (manual) installation method (obsolete variant)</b></summary>
 
 **ATTENTION**: with the universal method of installing PortProton, dependencies must be installed manually!
 
@@ -211,3 +211,4 @@ sudo xbps-install -Su void-repo-multilib
 sudo xbps-install -S bash wget icoutils yad bubblewrap zstd cabextract gzip tar xz openssl desktop-file-utils curl dbus freetype xdg-utils
 gdk-pixbuf noto-fonts-ttf nss xrandr lsof mesa-demos ImageMagick Vulkan-Tools libgcc alsa-plugins-32bit libX11-32bit freetype-32bit libglvnd-32bit libgpg-error-32bit nss-32bit openssl-32bit vulkan-loader vulkan-loader-32bit
 ```
+</details>

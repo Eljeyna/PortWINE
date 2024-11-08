@@ -19,7 +19,7 @@ Type=Application
 Terminal=False
 Categories=Game
 StartupNotify=true
-MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program
+MimeType=application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;text/win-bat;
 Path=${PORT_SCRIPTS_PATH}
 Icon=${PORT_WINE_PATH}/data/img/w.png
 EOF
@@ -39,7 +39,7 @@ fi
 
 if ! check_flatpak ; then
 	update-desktop-database -q "${HOME}/.local/share/applications"
-	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program"
+	xdg-mime default PortProton.desktop "application/x-ms-dos-executable;application/x-wine-extension-msp;application/x-msi;application/x-msdos-program;text/win-bat;"
 fi
 
 if [[ -f /usr/bin/portproton ]] \
@@ -53,9 +53,9 @@ if check_flatpak \
 && [[ -f "${HOME}/.local/share/applications/PortProton.desktop" ]] ; then
 	PORT_WINE_OLD_PATH="$(grep "Exec=" "${HOME}/.local/share/applications/PortProton.desktop" | awk -F'env ' '{print $2}' | awk -F'/data/scripts/' '{print $1}')"
 	if [[ -d "$PORT_WINE_OLD_PATH" ]] \
-	&& yad_question "$(gettext "PortProton installed by script has been detected. Do you want to transfer all the data from it to the new flatpak version of PortProton?")"
+	&& yad_question "${translations[PortProton installed by script has been detected. Do you want to transfer all the data from it to the new flatpak version of PortProton?]}"
 	then
-		pw_start_progress_bar_block "$(gettext "Please wait...")"
+		pw_start_progress_bar_block "${translations[Please wait...]}"
 
 		try_remove_file "${HOME}/.local/share/applications/PortProton.desktop"
 		try_remove_file "${PORT_WINE_OLD_PATH}"/PortProton.desktop
@@ -100,7 +100,7 @@ if check_flatpak \
 			done
 		fi
 		pw_stop_progress_bar
-		yad_info "$(gettext "PortProton has been moved to flatpak. You can now remove the old directory:") ${PORT_WINE_OLD_PATH}"
+		yad_info "${translations[PortProton has been moved to flatpak. You can now remove the old directory:]} ${PORT_WINE_OLD_PATH}"
 	fi
 fi
 

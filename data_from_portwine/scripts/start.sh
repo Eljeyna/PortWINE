@@ -30,21 +30,30 @@ export orig_IFS="$IFS"
 MISSING_DESKTOP_FILE="0"
 
 unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB
-if [[ "$1" == *.ppack ]] ; then
+
+if [[ "$1" == *.[Pp][Pp][Aa][Cc][Kk] ]] ; then
     export PW_NO_RESTART_PPDB="1"
     export PW_DISABLED_CREATE_DB="1"
     portwine_exe="$1"
 elif [[ -f "$1" ]] ; then
-    portwine_exe="$(realpath "$1")"
-elif [[ -f "$OLDPWD/$1" ]] && [[ "$1" == *.exe ]] ; then
-    portwine_exe="$(realpath "$OLDPWD/$1")"
-elif [[ "$1" == "--debug" ]] && [[ -f "$2" ]] ; then
-    portwine_exe="$(realpath "$2")"
-elif [[ "$1" == "--debug" ]] && [[ -f "$OLDPWD/$2" ]] && [[ "$2" == *.exe ]] ; then
-    portwine_exe="$(realpath "$OLDPWD/$2")"
-elif [[ "$1" == *.exe ]] ; then
+    portwine_exe="$(realpath -s "$1")"
+elif [[ -f "$OLDPWD/$1" ]] \
+&& [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Rr][Ee][Gg] || "$1" == *.[Mm][Ss][Ii] ]]
+then
+    portwine_exe="$(realpath -s "$OLDPWD/$1")"
+elif [[ "$1" == "--debug" ]] \
+&& [[ -f "$2" ]]
+then
+    portwine_exe="$(realpath -s "$2")"
+elif [[ "$1" == "--debug" ]] \
+&& [[ -f "$OLDPWD/$2" ]] \
+&& [[ "$2" == *.[Ee][Xx][Ee] || "$2" == *.[Bb][Aa][Tt] || "$2" == *.[Rr][Ee][Gg] || "$2" == *.[Mm][Ss][Ii] ]]
+then
+    portwine_exe="$(realpath -s "$OLDPWD/$2")"
+elif [[ "$1" == *.[Ee][Xx][Ee] || "$1" == *.[Bb][Aa][Tt] || "$1" == *.[Mm][Ss][Ii] || "$1" == *.[Rr][Ee][Gg] ]]
+then
     portwine_exe="$1"
-    MISSING_DESKTOP_FILE=1
+    MISSING_DESKTOP_FILE="1"
 fi
 export portwine_exe
 
@@ -57,26 +66,21 @@ then
     MISSING_DESKTOP_FILE="0"
 fi
 
-cd "$(dirname "$(readlink -f "$0")")" && PORT_SCRIPTS_PATH="$(pwd)" || fatal
-cd "${PORT_SCRIPTS_PATH}/../../" && PORT_WINE_PATH="$(pwd)" || fatal
-export PORT_SCRIPTS_PATH PORT_WINE_PATH
-export TEXTDOMAIN="PortProton"
-export TEXTDOMAINDIR="${PORT_WINE_PATH}/data/locales"
-
-if [[ ! -d "$TEXTDOMAINDIR" ]] \
-&& ! command -v gettext &>/dev/null
-then
-    gettext() { echo "$1"; }
+if PORT_SCRIPTS_PATH="$(readlink -f "${0%/*}")" ; then
+    export PORT_SCRIPTS_PATH
+    export PORT_WINE_PATH="${PORT_SCRIPTS_PATH%/*/*}"
+else
+    fatal
 fi
 
 # shellcheck source=/dev/null
 source "${PORT_SCRIPTS_PATH}/functions_helper"
 
 create_new_dir "${HOME}/.local/share/applications"
-if [[ "${PW_SILENT_RESTART}" == 1 ]] \
-|| [[ "${START_FROM_STEAM}" == 1 ]]
+if [[ "${PW_SILENT_RESTART}" == "1" ]] \
+|| [[ "${START_FROM_STEAM}" == "1" ]]
 then
-    export PW_GUI_DISABLED_CS=1
+    export PW_GUI_DISABLED_CS="1"
     unset PW_SILENT_RESTART
 else
     unset PW_GUI_DISABLED_CS
@@ -88,7 +92,8 @@ unset CHK_SYMLINK_FILE PW_MESA_GL_VERSION_OVERRIDE PW_VKD3D_FEATURE_LEVEL PATH_T
 unset PW_PREFIX_NAME WINEPREFIX VULKAN_MOD PW_WINE_VER PW_ADD_TO_ARGS_IN_RUNTIME PW_GAMEMODERUN_SLR AMD_VULKAN_ICD PW_WINE_CPU_TOPOLOGY
 unset PW_NAME_D_NAME PW_NAME_D_ICON PW_NAME_D_EXEC PW_EXEC_FROM_DESKTOP PW_ALL_DF PW_GENERATE_BUTTONS PW_NAME_D_ICON PW_NAME_D_ICON_48
 unset MANGOHUD_CONFIG FPS_LIMIT PW_WINE_USE WINEDLLPATH WINE WINEDIR WINELOADER WINESERVER PW_USE_RUNTIME PORTWINE_CREATE_SHORTCUT_NAME MIRROR
-unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR
+unset PW_LOCALE_SELECT PW_SETTINGS_INDICATION PW_GUI_START PW_AUTOINSTALL_EXE NOSTSTDIR RADV_DEBUG PW_NO_AUTO_CREATE_SHORTCUT
+unset PW_DESKTOP_FILES_REGEX PW_TERM
 
 export PORT_WINE_TMP_PATH="${PORT_WINE_PATH}/data/tmp"
 rm -f "$PORT_WINE_TMP_PATH"/*{exe,msi,tar}*
@@ -142,6 +147,7 @@ source "${PORT_SCRIPTS_PATH}/var"
 
 export STEAM_SCRIPTS="${PORT_WINE_PATH}/steam_scripts"
 export PW_PLUGINS_PATH="${PORT_WINE_TMP_PATH}/plugins${PW_PLUGINS_VER}"
+export PW_CACHE_LANG_PATH="${PORT_WINE_TMP_PATH}/cache_lang/"
 export PW_GUI_ICON_PATH="${PORT_WINE_PATH}/data/img/gui"
 export PW_GUI_THEMES_PATH="${PORT_WINE_PATH}/data/themes"
 export pw_yad="${PW_GUI_THEMES_PATH}/gui/yad_gui_pp"
@@ -152,8 +158,10 @@ export urlg="https://linux-gaming.ru/portproton/"
 export url_cloud="https://cloud.linux-gaming.ru/portproton"
 export PW_WINELIB="${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 try_remove_dir "${PW_WINELIB}/var"
-install_ver="$(head -n 1 "${PORT_WINE_TMP_PATH}/PortProton_ver")"
+install_ver="$(<"${PORT_WINE_TMP_PATH}/PortProton_ver")"
 export install_ver
+scripts_install_ver="$(<"${PORT_WINE_TMP_PATH}/scripts_ver")"
+export scripts_install_ver
 export WINETRICKS_DOWNLOADER="curl"
 export USER_CONF="${PORT_WINE_PATH}/data/user.conf"
 check_user_conf
@@ -166,8 +174,23 @@ try_remove_file "${PW_TMPFS_PATH}/update_pfx_log"
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
+if [[ ! -f "${PW_CACHE_LANG_PATH}/$LANGUAGE" ]] ; then
+    create_translations
+fi
+
+unset translations
+# shellcheck source=/dev/null
+source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+
+if [[ $TRANSLATIONS_VER != "$scripts_install_ver" ]] ; then
+    try_remove_dir "${PW_CACHE_LANG_PATH}"
+    create_translations
+    # shellcheck source=/dev/null
+    source "${PW_CACHE_LANG_PATH}/$LANGUAGE"
+fi
+
 # check PortProton theme
-if [[ ! -z "$GUI_THEME" ]] \
+if [[ -n "$GUI_THEME" ]] \
 && [[ -f "$PW_GUI_THEMES_PATH/$GUI_THEME.pptheme" ]]
 then
     # shellcheck source=/dev/null
@@ -177,7 +200,7 @@ else
     source "$PW_GUI_THEMES_PATH/default.pptheme"
     echo 'export GUI_THEME="default"' >> "$USER_CONF"
 fi
-[[ "$XDG_SESSION_DESKTOP" == "KDE" ]] && export YAD_OPTIONS+="--center"
+export YAD_OPTIONS+="--center"
 
 # choose branch
 if [[ -z "$BRANCH" ]] ; then
@@ -206,6 +229,11 @@ fi
 export MIRROR
 print_info "The first mirror in used: $MIRROR\n"
 
+# choose downloading covers from SteamGridDB or not
+if [[ -z "$DOWNLOAD_STEAM_GRID" ]] ; then
+    echo 'export DOWNLOAD_STEAM_GRID="1"' >> "$USER_CONF"
+    export DOWNLOAD_STEAM_GRID="1"
+fi
 
 if [[ "${INSTALLING_PORT}" == 1 ]] ; then
     return 0
@@ -221,139 +249,41 @@ case "$PW_GUI_START" in
               ;;
 esac
 
+if check_flatpak ; then
+    if check_gamescope_session
+    then PW_TERM="xterm -fullscreen -bg black -fg white -e"
+    else PW_TERM="xterm -bg black -fg white -e"
+    fi
+fi
+
 pw_check_and_download_plugins
 
 # check skip update
 if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     pw_port_update
 
-    if command -v gamescope &>/dev/null ; then
-        if timeout 3 gamescope --help &> "${PW_TMPFS_PATH}/gamescope.tmp" ; then
-            export GAMESCOPE_INSTALLED="1"
-        else
-            print_error "gamescope - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
-                debug_timer --start
-                timeout 5 gamescope --help
-                debug_timer --end "gamescope"
-            fi
-        fi
-    else
-        print_warning "gamescope - not found!"
-    fi
-
-    if command -v vulkaninfo &>/dev/null ; then
-        if timeout 3 vulkaninfo --summary &> "${PW_TMPFS_PATH}/vulkaninfo.tmp" ; then
-            VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-            GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-            export VULKAN_DRIVER_NAME GET_GPU_NAMES
-        else
-            print_error "vulkaninfo - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
-                debug_timer --start
-                timeout 5 vulkaninfo
-                debug_timer --end "vulkaninfo"
-            fi
-        fi
-    else
-        print_warning "use portable vulkaninfo"
-        "$PW_PLUGINS_PATH"/portable/bin/x86_64-linux-gnu-vulkaninfo &> "${PW_TMPFS_PATH}/vulkaninfo.tmp"
-        VULKAN_DRIVER_NAME="$(grep -e 'driverName' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | awk '{print$3}' | head -1)"
-        GET_GPU_NAMES=$(awk -F '=' '/deviceName/{print $2}' "${PW_TMPFS_PATH}/vulkaninfo.tmp" | sed '/llvm/d'| sort -u | sed 's/^ //' | paste -sd '!')
-        export VULKAN_DRIVER_NAME GET_GPU_NAMES
-    fi
-
-    if command -v lspci &>/dev/null ; then
-        if timeout 3 lspci -k &> "${PW_TMPFS_PATH}/lspci.tmp" ; then
-            LSPCI_VGA="$(grep -e 'VGA|3D' "${PW_TMPFS_PATH}/lspci.tmp" | tr -d '\n')"
-            export LSPCI_VGA
-        else
-            print_error "lspci - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
-                debug_timer --start
-                timeout 5 lspci -vv
-                debug_timer --end "lspci"
-            fi
-        fi
-    else
-        print_warning "lspci - not found!"
-    fi
-
-    if command -v xrandr &>/dev/null ; then
-        if timeout 3 xrandr --current &> "${PW_TMPFS_PATH}/xrandr.tmp" ; then
-            PW_SCREEN_RESOLUTION="$(<"${PW_TMPFS_PATH}/xrandr.tmp" sed -rn 's/^.*primary.* ([0-9]+x[0-9]+).*$/\1/p')"
-            PW_SCREEN_PRIMARY="$(grep -e 'primary' "${PW_TMPFS_PATH}/xrandr.tmp" | awk '{print $1}')"
-            export PW_SCREEN_PRIMARY PW_SCREEN_RESOLUTION
-            echo ""
-            print_var PW_SCREEN_RESOLUTION PW_SCREEN_PRIMARY
-        else
-            print_error "xrandr - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
-                debug_timer --start
-                timeout 5 xrandr --verbose
-                debug_timer --end "xrandr"
-            fi
-        fi
-    else
-        print_warning "xrandr - not found!"
-    fi
-
-    logical_cores=$(grep -c "^processor" /proc/cpuinfo)
-    if [[ "${logical_cores}" -le "4" ]] ; then
-        GET_LOGICAL_CORE="1!$(seq -s! 1 $(( logical_cores - 1 )))"
-    else
-        GET_LOGICAL_CORE="1!2!$(seq -s! 4 4 $(( logical_cores - 1 )))"
-    fi
-    export GET_LOGICAL_CORE
-
-    if command -v locale &>/dev/null ; then
-        if timeout 3 locale -a &> "${PW_TMPFS_PATH}/locale.tmp" ; then
-            GET_LOCALE_LIST="ru_RU.utf en_US.utf zh_CN.utf ja_JP.utf ko_KR.utf"
-            unset LOCALE_LIST
-            for LOCALE in $GET_LOCALE_LIST ; do
-                if grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp" &>/dev/null ; then
-                    if [[ ! -z "$LOCALE_LIST" ]]
-                    then LOCALE_LIST+="!$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
-                    else LOCALE_LIST="$(grep -e "$LOCALE" "${PW_TMPFS_PATH}/locale.tmp")"
-                    fi
-                fi
-            done
-            export LOCALE_LIST
-        else
-            print_error "locale - broken!"
-            if [[ -n $PW_DEBUG ]] ; then
-                debug_timer --start
-                timeout 5 locale -a
-                debug_timer --end "locale"
-            fi
-        fi
-    else
-        print_warning "locale - not found!"
-    fi
-
     PW_FILESYSTEM=$(stat -f -c %T "${PORT_WINE_PATH}")
     export PW_FILESYSTEM
-else
-    scripts_install_ver=$(head -n 1 "${PORT_WINE_TMP_PATH}/scripts_ver")
-    export scripts_install_ver
+
+    background_pid --start "pw_get_tmp_files" "1"
 fi
 
 # create lock file
 if ! check_flatpak ; then
-if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
-    print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
-    yad_question "$(gettext 'A running PortProton session was detected.\nDo you want to end the previous session?')" || exit 0
-fi
-touch "${PW_TMPFS_PATH}/portproton.lock"
-rm_lock_file () {
-    echo "Removing the lock file..."
-    rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
-}
-trap "rm_lock_file" EXIT
+    if [[ -f "${PW_TMPFS_PATH}/portproton.lock" ]] ; then
+        print_warning "Found lock file: ${PW_TMPFS_PATH}/portproton.lock"
+        yad_question "${translations[A running PortProton session was detected.\\nDo you want to end the previous session?]}" || exit 0
+    fi
+    touch "${PW_TMPFS_PATH}/portproton.lock"
+    rm_lock_file () {
+        echo "Removing the lock file..."
+        rm -fv "${PW_TMPFS_PATH}/portproton.lock" && echo "OK"
+    }
+    trap "rm_lock_file" EXIT
 fi
 
-if check_flatpak
-then try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
+if check_flatpak ; then
+    try_remove_dir "${PORT_WINE_TMP_PATH}/libs${PW_LIBS_VER}"
 else pw_download_libs
 fi
 
@@ -366,6 +296,7 @@ then
 fi
 
 pw_check_and_download_dxvk_and_vkd3d
+
 # shellcheck source=/dev/null
 source "${USER_CONF}"
 
@@ -388,9 +319,11 @@ if [[ "${SKIP_CHECK_UPDATES}" != 1 ]] ; then
     fi
 fi
 
-[[ "$MISSING_DESKTOP_FILE" == 1 ]] && portwine_missing_shortcut
+export SKIP_CHECK_UPDATES="1"
 
-if [[ ! -z $(basename "${portwine_exe}" | grep .ppack) ]] ; then
+[[ "$MISSING_DESKTOP_FILE" == "1" ]] && portwine_missing_shortcut
+
+if [[ -n $(basename "${portwine_exe}" | grep .ppack) ]] ; then
     unset PW_SANDBOX_HOME_PATH
     pw_init_runtime
     if check_flatpak
@@ -408,7 +341,7 @@ EOF
     if grep "ERROR" "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error &>/dev/null ; then
         try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack_error
         try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
-        yad_error "$(gettext "Unpack has FAILED for prefix:") <b>\"${PW_PREFIX_NAME}\"</b>."
+        yad_error "${translations[Unpack has FAILED for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         exit 1
     else
         try_remove_file "${PORT_WINE_TMP_PATH}"/pp_pfx_unpack.sh
@@ -419,7 +352,7 @@ EOF
                 portwine_create_shortcut
             done < "$PORT_WINE_PATH/data/prefixes/$PW_PREFIX_NAME/.create_shortcut"
         fi
-        yad_info "$(gettext "Unpack is DONE for prefix:") <b>\"${PW_PREFIX_NAME}\"</b>."
+        yad_info "${translations[Unpack is DONE for prefix:]} <b>\"${PW_PREFIX_NAME}\"</b>."
         exit 0
     fi
 fi
@@ -446,6 +379,9 @@ use: [--repair] [--reinstall] [--autoinstall]
 --debug                                             debug scripts for PortProton
                                                     (saved log in $PORT_WINE_PATH/scripts-debug.log)
 "
+        echo "
+--update                                            check update scripts for PortProton
+"
         exit 0 ;;
 
     '--reinstall' )
@@ -464,13 +400,18 @@ use: [--repair] [--reinstall] [--autoinstall]
     '--debug' )
         clear
         export PW_DEBUG="set -x"
-        /usr/bin/env bash -c ${pw_full_command_line[*]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
+        /usr/bin/env bash -c ${pw_full_command_line[@]} 2>&1 | tee "$PORT_WINE_PATH/scripts-debug.log" &
         exit 0 ;;
+
     '--server-file-access' )
         echo
-        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -r
+        curl -s --list-only "https://cloud.linux-gaming.ru/log/$(date +20%y_%m)_file_access.log" | sort -V -k 2,2 \
+        | sed 's/count=//g' | awk '{a=$1; $1=$2; $2=a} 1' | awk 'BEGIN {print "Count: Name:"} {print}' | column -t
         echo
         exit 0 ;;
+
+    '--update' )
+        gui_pw_update ;;
 esac
 
 ### GUI ###
@@ -504,13 +445,13 @@ if [[ -d "${PORT_WINE_PATH}/data/dist/" ]] ; then
     done
 fi
 
-SORT_OPENGL="$(gettext 'WineD3D OpenGL (For video cards without Vulkan)')"
-SORT_VULKAN="$(gettext 'WineD3D Vulkan (Damavand experimental)')"
-SORT_LEGACY="$(gettext 'Legacy DXVK (Vulkan v1.1)')"
-SORT_STABLE="$(gettext 'Stable DXVK, VKD3D (Vulkan v1.2)')"
-SORT_NEWEST="$(gettext 'Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)')"
-SORT_G_NINE="$(gettext 'Gallium Nine (DirectX 9 for MESA)')"
-SORT_G_ZINK="$(gettext 'Gallium Zink (OpenGL to Vulkan)')"
+SORT_OPENGL="${translations[WineD3D OpenGL (For video cards without Vulkan)]}"
+SORT_VULKAN="${translations[WineD3D Vulkan (Damavand experimental)]}"
+SORT_LEGACY="${translations[Legacy DXVK (Vulkan v1.1)]}"
+SORT_STABLE="${translations[Stable DXVK, VKD3D (Vulkan v1.2)]}"
+SORT_NEWEST="${translations[Newest DXVK, VKD3D, D8VK (Vulkan v1.3+)]}"
+SORT_G_NINE="${translations[Gallium Nine (DirectX 9 for MESA)]}"
+SORT_G_ZINK="${translations[Gallium Zink (OpenGL to Vulkan)]}"
 
 case "${PW_VULKAN_USE}" in
     0) PW_DEFAULT_VULKAN_USE="$SORT_OPENGL!$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_VULKAN" ;;
@@ -522,11 +463,12 @@ case "${PW_VULKAN_USE}" in
     *) PW_DEFAULT_VULKAN_USE="$SORT_NEWEST!$SORT_STABLE!$SORT_LEGACY!$SORT_G_ZINK!$SORT_G_NINE!$SORT_OPENGL!$SORT_VULKAN" ;;
 esac
 
-if [[ ! -z "${PW_COMMENT_DB}" ]] ; then :
-elif  [[ ! -z "${PORTPROTON_NAME}" ]] ; then
-    PW_COMMENT_DB="$(gettext "Launching") <b>${PORTPROTON_NAME}</b>"
-else
-    PW_COMMENT_DB="$(gettext "Launching") <b>${PORTWINE_DB}</b>"
+if [[ -z "${PW_COMMENT_DB}" ]] ; then
+    if [[ -n "${PORTPROTON_NAME}" ]] ; then
+        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTPROTON_NAME}" "50")</b>"
+    else
+        PW_COMMENT_DB="${translations[Launching]} <b>$(print_wrapped "${PORTWINE_DB}" "50")</b>"
+    fi
 fi
 
 if [[ $PW_WINE_USE == PROTON_LG ]] ; then
@@ -546,13 +488,20 @@ if [[ -z "${PORTWINE_DB_FILE}" ]] ; then
 fi
 
 if [[ -f "${portwine_exe}" ]] ; then
+    unset TAB_MAIN_MENU
+    if [[ "$RESTART_PP_USED" == "edit_db" ]] ; then
+        unset RESTART_PP_USED
+        gui_edit_db
+    elif [[ "$RESTART_PP_USED" == "userconf" ]] ; then
+        unset RESTART_PP_USED
+        gui_userconf
+    fi
     if [[ "${PW_GUI_DISABLED_CS}" != 1 ]] ; then
         pw_create_gui_png
-        grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop
-        if [[ "$?" != "0" ]] ; then
-            PW_SHORTCUT="$(gettext "CREATE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Create shortcut for select file..."):100"
+        if ! grep -il "${portwine_exe}" "${HOME}/.local/share/applications"/*.desktop &>/dev/null ; then
+            PW_SHORTCUT="${translations[CREATE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Create shortcut for select file...]}:100"
         else
-            PW_SHORTCUT="$(gettext "DELETE SHORTCUT")!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!$(gettext "Delete shortcut for select file..."):98"
+            PW_SHORTCUT="${translations[DELETE SHORTCUT]}!$PW_GUI_ICON_PATH/$BUTTON_SIZE.png!${translations[Delete shortcut for select file...]}:98"
         fi
 
         export KEY_START="$RANDOM"
@@ -568,15 +517,17 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_NOTEBOOK_COLUMNS}" --align-buttons --homogeneous-column \
             --gui-type-layout="${START_GUI_TYPE_LAYOUT_NOTEBOOK}" \
-            --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
-            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
+            --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
+            --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   ${translations[Open directory]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
+            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
+            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
+            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
             2>/dev/null &
 
             if [[ "${PW_YAD_FORM_TAB}" == "1" ]] \
-            && [[ ! -z "${TAB_START}" ]]
+            && [[ -n "${TAB_START}" ]]
             then
                 export TAB_START="2"
                 unset PW_YAD_FORM_TAB
@@ -586,15 +537,15 @@ if [[ -f "${portwine_exe}" ]] ; then
 
             "${pw_yad}" --key=$KEY_START --notebook --active-tab="${TAB_START}" \
             --gui-type="settings-notebook" \
-            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" --center \
+            --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" --expand \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --tab="$(gettext "GENERAL")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-            --tab="$(gettext "SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-            --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Main menu")":128 \
+            --tab="${translations[GENERAL]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+            --tab="${translations[SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+            --button="${translations[MAIN MENU]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Main menu]}":128 \
             --button="${PW_SHORTCUT}" \
-            --button="$(gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Launch with the creation of a .log file at the root PortProton")":102 \
-            --button="$(gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Run file ...")":106 2>/dev/null
+            --button="${translations[DEBUG]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
+            --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
             export PW_YAD_FORM_TAB="1"
 
@@ -611,34 +562,34 @@ if [[ -f "${portwine_exe}" ]] ; then
             "${pw_yad}" --plug=$KEY_START --tabnum=2 --form --columns="${START_GUI_PANED_COLUMNS}" \
             --gui-type-layout="${START_GUI_TYPE_LAYOUT_PANED}" \
             --align-buttons --homogeneous-row --homogeneous-column \
-            --field="   $(gettext "Base settings")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Edit database file for") ${PORTWINE_DB}":"FBTN" '@bash -c "button_click_start 118"' \
-            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)")":"FBTN" '@bash -c "button_click_start 120"' \
-            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)")":"FBTN" '@bash -c "button_click_start 122"' \
-            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)")":"FBTN" '@bash -c "button_click_start 124"' \
-            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Enable GameScope by default (Wayland micro compositor)")":"FBTN" '@bash -c "button_click_start 126"' \
+            --field="   ${translations[Base settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Edit database file for]} ${PORTWINE_DB}":"FBTN" '@bash -c "button_click --start 118"' \
+            --field="   ${translations[Global settings]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Settings for user.conf]}":"FBTN" '@bash -c "button_click --start 128"' \
+            --field="   ${translations[Open directory]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Open directory with <b>.ppdb</b> file]}":"FBTN" '@bash -c "button_click --start open_game_folder"' \
+            --field="   vkBasalt"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable vkBasalt by default to improve graphics in games running on Vulkan. (The HOME hotkey disables vkbasalt)]}":"FBTN" '@bash -c "button_click --start 120"' \
+            --field="   MangoHud"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable Mangohud by default (R_SHIFT + F12 keyboard shortcuts disable Mangohud)]}":"FBTN" '@bash -c "button_click --start 122"' \
+            --field="   dgVoodoo2"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable dgVoodoo2 by default (This wrapper fixes many compatibility and rendering issues when running old games)]}":"FBTN" '@bash -c "button_click --start 124"' \
+            --field="   GameScope"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Enable GameScope by default (Wayland micro compositor)]}":"FBTN" '@bash -c "button_click --start 126"' \
             2>/dev/null &
 
-            "${pw_yad}" --key=$KEY_START --paned --center \
+            "${pw_yad}" --key=$KEY_START --paned \
             --gui-type="settings-paned" \
             --width="${PW_START_SIZE_W}" --tab-pos="${PW_TAB_POSITON}" \
             --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
             --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
-            --button="$(gettext "MAIN MENU")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Main menu")":128 \
+            --button="${translations[MAIN MENU]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Main menu]}":128 \
             --button="${PW_SHORTCUT}" \
-            --button="$(gettext "DEBUG")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Launch with the creation of a .log file at the root PortProton")":102 \
-            --button="$(gettext "LAUNCH")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"$(gettext "Run file ...")":106 2>/dev/null
+            --button="${translations[DEBUG]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Launch with the creation of a .log file at the root PortProton]}":102 \
+            --button="${translations[LAUNCH]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE.png"!"${translations[Run file ...]}":106 2>/dev/null
             PW_YAD_SET="$?"
         fi
-        [[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+        [[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
             128)
                     if [[ "${PW_GUI_START}" == "NOTEBOOK" ]] ; then
                         unset PW_YAD_FORM_TAB
                     fi
-                    unset PW_NO_RESTART_PPDB PW_DISABLED_CREATE_DB KEY_START portwine_exe
-                    export SKIP_CHECK_UPDATES=1
-                    /usr/bin/env bash -c ${pw_full_command_line[*]} &
+                    unset portwine_exe KEY_START $(sed -n '/export/p' "${PORTWINE_DB_FILE}" | sed 's/\(export\|=.*\| \)//g')
                     print_info "Restarting..."
-                    exit 0
+                    restart_pp
                     ;;
             1|252)
                     exit 0
@@ -650,26 +601,20 @@ if [[ -f "${portwine_exe}" ]] ; then
         portwine_launch
     fi
 else
-    export KEY="$RANDOM"
-
-    if [[ "$MIRROR" == "CLOUD" ]]
-    then NEW_MIRROR="GITHUB"
-    else NEW_MIRROR="CLOUD"
-    fi
-
-    if [[ "$BRANCH" == "master" ]]
-    then NEW_BRANCH="DEVEL"
-    else NEW_BRANCH="STABLE"
-    fi
-
-    IFS=$'\n'
     PW_ALL_DF="$(ls "${PORT_WINE_PATH}"/ | grep .desktop | grep -vE '(PortProton|readme)')"
     if [[ -z "${PW_ALL_DF}" ]]
-    then PW_GUI_SORT_TABS=(1 2 3 4 5)
-    else PW_GUI_SORT_TABS=(2 3 4 5 1)
+    then export PW_GUI_SORT_TABS=(1 2 3 4 5)
+    else export PW_GUI_SORT_TABS=(2 3 4 5 1)
     fi
-    PW_GENERATE_BUTTONS="--field=   $(gettext "Create shortcut...")!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click pw_find_exe\"%"
+    if [[ "$RESTART_PP_USED" == "userconf" ]] ; then
+        unset RESTART_PP_USED
+        gui_userconf
+    fi
 
+    export KEY_MENU="$RANDOM"
+
+    IFS=$'\n'
+    PW_GENERATE_BUTTONS="--field=   ${translations[Create shortcut...]}!${PW_GUI_ICON_PATH}/find_48.svg!:FBTN%@bash -c \"button_click --normal pw_find_exe\"%"
     for PW_DESKTOP_FILES in ${PW_ALL_DF} ; do
         if check_flatpak ; then
             PW_NAME_D_ICON="$(grep Exec "${PORT_WINE_PATH}/${PW_DESKTOP_FILES}" | awk -F'=' '{print $2}' |
@@ -685,108 +630,130 @@ else
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_48//"${PORT_WINE_PATH}/data/img/"/}" "48"
             resize_png "${PW_NAME_D_ICON}" "${PW_NAME_D_ICON_128//"${PORT_WINE_PATH}/data/img/"/}" "128"
         fi
-        PW_GENERATE_BUTTONS+="--field=   ${PW_DESKTOP_FILES//".desktop"/""}!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"run_desktop_b_click "${PW_DESKTOP_FILES// /@_@}"\"%"
+        if [[ $PW_DESKTOP_FILES =~ [\(\)\!\$\%\&\`\'\"\>\<\\\|\;] ]] ; then
+            export PW_DESKTOP_FILES_REGEX="1"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES//\!/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\%/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\$/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\&/}"
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES_SHOW//\</}"
+
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\(/#+_1#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\)/#+_2#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\!/#+_3#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\$/#+_4#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\%/#+_5#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\&/#+_6#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\`/#+_7#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\'/#+_8#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\"/#+_9#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\>/#+_10#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\</#+_11#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\\/#+_12#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\|/#+_13#}"
+            PW_DESKTOP_FILES="${PW_DESKTOP_FILES//\;/#+_14#}"
+        else
+            PW_DESKTOP_FILES_SHOW="${PW_DESKTOP_FILES}"
+        fi
+        PW_GENERATE_BUTTONS+="--field=   $(print_wrapped "${PW_DESKTOP_FILES_SHOW//".desktop"/""}" "25" "...")!${PW_NAME_D_ICON_48}.png!:FBTN%@bash -c \"button_click --desktop "${PW_DESKTOP_FILES// /#@_@#}"\"%"
     done
-    IFS="$orig_IFS"
 
     IFS="%"
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[4]}" --form --columns="$MAIN_GUI_COLUMNS" --homogeneous-column \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --align-buttons --scroll --separator=" " ${PW_GENERATE_BUTTONS} 2>/dev/null &
     IFS="$orig_IFS"
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
-    --gui-type-layout=${MAIN_MENU_GUI_TYPE_LAYOUT} \
-    --field="   $(gettext "Reinstall PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_reinstall_pp"' \
-    --field="   $(gettext "Remove PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_rm_portproton"' \
-    --field="   $(gettext "Update PortProton")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_pw_update"' \
-    --field="   $(gettext "Changelog")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click open_changelog"' \
-    --field="   $(gettext "Change language")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_loc"' \
-    --field="   $(gettext "Edit user.conf")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_user_conf"' \
-    --field="   $(gettext "Scripts from backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_open_scripts_from_backup"' \
-    --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click pw_start_cont_xterm"' \
-    --field="   $(gettext "Credits")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click gui_credits"' \
-    --field="   $(gettext "Change mirror to") $NEW_MIRROR"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_mirror"' \
-    --field="   $(gettext "Change branch to") $NEW_BRANCH"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_branch"' \
-    --field="   $(gettext "Change start gui")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click change_gui_start"' \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[3]}" --form --columns=3 --align-buttons --separator=";" --homogeneous-column \
+    --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
+    --field="   ${translations[Reinstall PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_reinstall_pp"' \
+    --field="   ${translations[Remove PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_rm_portproton"' \
+    --field="   ${translations[Update PortProton]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_pw_update"' \
+    --field="   ${translations[Changelog]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal open_changelog"' \
+    --field="   ${translations[Change language]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal change_loc"' \
+    --field="   ${translations[Global settings (user.conf)]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal 128"' \
+    --field="   ${translations[Scripts from backup]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_open_scripts_from_backup"' \
+    --field="   Xterm"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal pw_start_cont_xterm"' \
+    --field="   ${translations[Credits]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"FBTN" '@bash -c "button_click --normal gui_credits"' \
     2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[2]}" --form --columns=3 --align-buttons --separator=";" \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
     --field="   3D API  : :CB" "${PW_DEFAULT_VULKAN_USE}" \
     --field="   PREFIX  : :CBE" "${PW_ADD_PREFIXES_TO_GUI}" \
     --field="     WINE  : :CB" "$(combobox_fix "${PW_WINE_USE}" "${PW_DEFAULT_WINE_USE}")" \
-    --field="$(gettext "Create prefix backup")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click pw_create_prefix_backup"' \
-    --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run winetricks to install additional libraries to the selected prefix")":"FBTN" '@bash -c "button_click WINETRICKS"' \
-    --field="   $(gettext "Clear prefix")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Clear the prefix to fix problems")":"FBTN" '@bash -c "button_click gui_clear_pfx"' \
-    --field="   $(gettext "Get other Wine")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Open the menu to download other versions of WINE or PROTON")":"FBTN" '@bash -c "button_click gui_proton_downloader"' \
-    --field="   $(gettext "Uninstaller")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run the program uninstaller built into wine")":"FBTN" '@bash -c "button_click gui_wine_uninstaller"' \
-    --field="   $(gettext "Prefix Manager")     "!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run winecfg to edit the settings of the selected prefix")":"FBTN" '@bash -c "button_click WINECFG"' \
-    --field="   $(gettext "File Manager")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine file manager")":"FBTN" '@bash -c "button_click WINEFILE"' \
-    --field="   $(gettext "Command line")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine cmd")":"FBTN" '@bash -c "button_click WINECMD"' \
-    --field="   $(gettext "Regedit")"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"$(gettext "Run wine regedit")":"FBTN" '@bash -c "button_click WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
+    --field="${translations[Create prefix backup]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"":"CFBTN" '@bash -c "button_click --normal pw_create_prefix_backup"' \
+    --field="   Winetricks"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run winetricks to install additional libraries to the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINETRICKS"' \
+    --field="   ${translations[Clear prefix]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Clear the prefix to fix problems]}":"FBTN" '@bash -c "button_click --normal gui_clear_pfx"' \
+    --field="   ${translations[Get other Wine]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Open the menu to download other versions of WINE or PROTON]}":"FBTN" '@bash -c "button_click --normal gui_proton_downloader"' \
+    --field="   ${translations[Uninstaller]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run the program uninstaller built into wine]}":"FBTN" '@bash -c "button_click --normal gui_wine_uninstaller"' \
+    --field="   ${translations[Prefix Manager]}     "!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run winecfg to edit the settings of the selected prefix]}":"FBTN" '@bash -c "button_click --normal WINECFG"' \
+    --field="   ${translations[File Manager]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine file manager]}":"FBTN" '@bash -c "button_click --normal WINEFILE"' \
+    --field="   ${translations[Command line]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine cmd]}":"FBTN" '@bash -c "button_click --normal WINECMD"' \
+    --field="   ${translations[Regedit]}"!"$PW_GUI_ICON_PATH/$BUTTON_SIZE_MM.png"!"${translations[Run wine regedit]}":"FBTN" '@bash -c "button_click --normal WINEREG"' 1> "${PW_TMPFS_PATH}/tmp_yad_form_vulkan" 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[1]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"$(gettext "Emulator for Nintendo game consoles with high compatibility")":"FBTN" '@bash -c "button_click PW_DOLPHIN"' \
-    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"$(gettext "Multi-arcade emulator that allows you to play old arcade games")":"FBTN" '@bash -c "button_click PW_MAME"' \
-    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"$(gettext "Multi-platform frontend for emulators with extensive settings")":"FBTN" '@bash -c "button_click PW_RETROARCH"' \
-    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"$(gettext "Emulator for the PlayStation Portable (PSP) game console")":"FBTN" '@bash -c "button_click PW_PPSSPP"' \
-    --field="   Citra"!"$PW_GUI_ICON_PATH/citra.png"!"$(gettext "Emulator for the Nintendo 3DS game console")":"FBTN" '@bash -c "button_click PW_CITRA"' \
-    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"$(gettext "Emulator for the Wii U game console")":"FBTN" '@bash -c "button_click PW_CEMU"' \
-    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"$(gettext "Emulator for the PlayStation 1 game console with high compatibility")":"FBTN" '@bash -c "button_click PW_EPSXE"' \
-    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"$(gettext "Emulator for the Nintendo 64 game console")":"FBTN" '@bash -c "button_click PW_PROJECT64"' \
-    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png"!"$(gettext "Emulator for the Game Boy Advance game console")":"FBTN" '@bash -c "button_click PW_VBA-M"' \
-    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png"!"$(gettext "Emulator for the Sega Saturn game console")":"FBTN" '@bash -c "button_click PW_YABAUSE"' \
-    --field="   Xenia"!"$PW_GUI_ICON_PATH/xenia.png"!"$(gettext "Emulator for the Xbox 360 game console")":"FBTN" '@bash -c "button_click PW_XENIA"' \
-    --field="   FCEUX"!"$PW_GUI_ICON_PATH/fceux.png"!"$(gettext "Emulator for the Nintendo Entertainment System (NES or Dendy) game console")":"FBTN" '@bash -c "button_click PW_FCEUX"' \
-    --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"$(gettext "Emulator for the Xbox game console")":"FBTN" '@bash -c "button_click PW_XEMU"' \
-    --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"$(gettext "Emulator for the Sega Dreamcast game console")":"FBTN" '@bash -c "button_click PW_DEMUL"' 2>/dev/null &
+    --field="   Dolphin 5.0"!"$PW_GUI_ICON_PATH/dolphin.png"!"${translations[Emulator for Nintendo game consoles with high compatibility]}":"FBTN" '@bash -c "button_click --normal PW_DOLPHIN"' \
+    --field="   MAME"!"$PW_GUI_ICON_PATH/mame.png"!"${translations[Multi-arcade emulator that allows you to play old arcade games]}":"FBTN" '@bash -c "button_click --normal PW_MAME"' \
+    --field="   RetroArch"!"$PW_GUI_ICON_PATH/retroarch.png"!"${translations[Multi-platform frontend for emulators with extensive settings]}":"FBTN" '@bash -c "button_click --normal PW_RETROARCH"' \
+    --field="   PPSSPP Windows"!"$PW_GUI_ICON_PATH/ppsspp.png"!"${translations[Emulator for the PlayStation Portable (PSP) game console]}":"FBTN" '@bash -c "button_click --normal PW_PPSSPP"' \
+    --field="   Cemu"!"$PW_GUI_ICON_PATH/cemu.png"!"${translations[Emulator for the Wii U game console]}":"FBTN" '@bash -c "button_click --normal PW_CEMU"' \
+    --field="   ePSXe"!"$PW_GUI_ICON_PATH/epsxe.png"!"${translations[Emulator for the PlayStation 1 game console with high compatibility]}":"FBTN" '@bash -c "button_click --normal PW_EPSXE"' \
+    --field="   Project64"!"$PW_GUI_ICON_PATH/project64.png"!"${translations[Emulator for the Nintendo 64 game console]}":"FBTN" '@bash -c "button_click --normal PW_PROJECT64"' \
+    --field="   VBA-M"!"$PW_GUI_ICON_PATH/vba-m.png"!"${translations[Emulator for the Game Boy Advance game console]}":"FBTN" '@bash -c "button_click --normal PW_VBA-M"' \
+    --field="   Yabause"!"$PW_GUI_ICON_PATH/yabause.png"!"${translations[Emulator for the Sega Saturn game console]}":"FBTN" '@bash -c "button_click --normal PW_YABAUSE"' \
+    --field="   Xenia"!"$PW_GUI_ICON_PATH/xenia.png"!"${translations[Emulator for the Xbox 360 game console]}":"FBTN" '@bash -c "button_click --normal PW_XENIA"' \
+    --field="   FCEUX"!"$PW_GUI_ICON_PATH/fceux.png"!"${translations[Emulator for the Nintendo Entertainment System (NES or Dendy) game console]}":"FBTN" '@bash -c "button_click --normal PW_FCEUX"' \
+    --field="   xemu"!"$PW_GUI_ICON_PATH/xemu.png"!"${translations[Emulator for the Xbox game console]}":"FBTN" '@bash -c "button_click --normal PW_XEMU"' \
+    --field="   Demul"!"$PW_GUI_ICON_PATH/demul.png"!"${translations[Emulator for the Sega Dreamcast game console]}":"FBTN" '@bash -c "button_click --normal PW_DEMUL"' 2>/dev/null &
 
-    "${pw_yad}" --plug=$KEY --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
+    "${pw_yad}" --plug=$KEY_MENU --tabnum="${PW_GUI_SORT_TABS[0]}" --form --columns="$MAIN_GUI_COLUMNS" --align-buttons --scroll --homogeneous-column \
     --gui-type-layout="${MAIN_MENU_GUI_TYPE_LAYOUT}" \
-    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click PW_LGC"' \
-    --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click PW_VKPLAY"' \
-    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click PW_BATTLE_NET"' \
-    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTN" '@bash -c "button_click PW_EPIC"' \
-    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click PW_GOG"' \
-    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click PW_UBC"' \
-    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click PW_EVE"' \
-    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click PW_ROCKSTAR"' \
-    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click  PW_GAMEFORGE"' \
-    --field="   World of Sea Battle (x64)"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click PW_WOSB"' \
-    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click PW_CALIBER"' \
-    --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click PW_CROSSOUT"' \
-    --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click PW_WARFRAME"' \
-    --field="   Panzar"!"$PW_GUI_ICON_PATH/panzar.png"!"":"FBTN" '@bash -c "button_click PW_PANZAR"' \
-    --field="   STALCRAFT"!"$PW_GUI_ICON_PATH/stalcraft.png"!"":"FBTN" '@bash -c "button_click PW_STALCRAFT"' \
-    --field="   CONTRACT WARS"!"$PW_GUI_ICON_PATH/cwc.png"!"":"FBTN" '@bash -c "button_click PW_CWC"' \
-    --field="   Stalker Online"!"$PW_GUI_ICON_PATH/so.png"!"":"FBTN" '@bash -c "button_click PW_SO"' \
-    --field="   Modern Warships"!"$PW_GUI_ICON_PATH/mw.png"!"":"FBTN" '@bash -c "button_click PW_MW"' \
-    --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTN" '@bash -c "button_click PW_MWO"' \
-    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click PW_ANKAMA"' \
-    --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTN" '@bash -c "button_click PW_IGCLIENT"' \
-    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click PW_PLARIUM_PLAY"' \
-    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTN" '@bash -c "button_click PW_WGC"' \
-    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click PW_OSU"' \
-    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click PW_ITCH"' \
-    --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click PW_STEAM"' \
-    --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click PW_POE"' \
-    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click PW_GUILD_WARS_2"' \
-    --field="   HoYoPlay"!"$PW_GUI_ICON_PATH/hoyoplay.png"!"":"FBTN" '@bash -c "button_click PW_HO_YO_PLAY"' \
-    --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click PW_EAAPP"' \
-    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click PW_BSR"' \
-    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click PW_BDO"' \
-    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click PW_PULSE_ONLINE"' \
-    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTN" '@bash -c "button_click PW_CATSLAUNCHER"' \
-    --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTN" '@bash -c "button_click PW_RUSSIAN_FISHING"' \
-    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTN" '@bash -c "button_click PW_W3D_HUB"' \
-    --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTN" '@bash -c "button_click PW_ANOMALY_ZONE"' \
+    --field="   Lesta Game Center"!"$PW_GUI_ICON_PATH/lgc.png"!"":"FBTN" '@bash -c "button_click --normal PW_LGC"' \
+    --field="   vkPlay Games Center"!"$PW_GUI_ICON_PATH/mygames.png"!"":"FBTN" '@bash -c "button_click --normal PW_VKPLAY"' \
+    --field="   Battle.net Launcher"!"$PW_GUI_ICON_PATH/battle_net.png"!"":"FBTN" '@bash -c "button_click --normal PW_BATTLE_NET"' \
+    --field="   Epic Games Launcher"!"$PW_GUI_ICON_PATH/epicgames.png"!"":"FBTN" '@bash -c "button_click --normal PW_EPIC"' \
+    --field="   GoG Galaxy Launcher"!"$PW_GUI_ICON_PATH/gog.png"!"":"FBTN" '@bash -c "button_click --normal PW_GOG"' \
+    --field="   Ubisoft Game Launcher"!"$PW_GUI_ICON_PATH/ubc.png"!"":"FBTN" '@bash -c "button_click --normal PW_UBISOFT"' \
+    --field="   EVE Online Launcher"!"$PW_GUI_ICON_PATH/eve.png"!"":"FBTN" '@bash -c "button_click --normal PW_EVE"' \
+    --field="   Rockstar Games Launcher"!"$PW_GUI_ICON_PATH/Rockstar.png"!"":"FBTN" '@bash -c "button_click --normal PW_ROCKSTAR"' \
+    --field="   Gameforge Client"!"$PW_GUI_ICON_PATH/gameforge.png"!"":"FBTN" '@bash -c "button_click --normal  PW_GAMEFORGE"' \
+    --field="   World of Sea Battle"!"$PW_GUI_ICON_PATH/wosb.png"!"":"FBTN" '@bash -c "button_click --normal PW_WORLD_OF_SEA_BATTLE"' \
+    --field="   CALIBER"!"$PW_GUI_ICON_PATH/caliber.png"!"":"FBTN" '@bash -c "button_click --normal PW_CALIBER"' \
+    --field="   Crossout"!"$PW_GUI_ICON_PATH/crossout.png"!"":"FBTN" '@bash -c "button_click --normal PW_CROSSOUT"' \
+    --field="   Warframe"!"$PW_GUI_ICON_PATH/warframe.png"!"":"FBTN" '@bash -c "button_click --normal PW_WARFRAME"' \
+    --field="   Panzar"!"$PW_GUI_ICON_PATH/panzar.png"!"":"FBTN" '@bash -c "button_click --normal PW_PANZAR"' \
+    --field="   STALCRAFT"!"$PW_GUI_ICON_PATH/stalcraft.png"!"":"FBTN" '@bash -c "button_click --normal PW_STALCRAFT"' \
+    --field="   CONTRACT WARS"!"$PW_GUI_ICON_PATH/cwc.png"!"":"FBTN" '@bash -c "button_click --normal PW_CWC"' \
+    --field="   Stalker Online"!"$PW_GUI_ICON_PATH/so.png"!"":"FBTN" '@bash -c "button_click --normal PW_SO"' \
+    --field="   Modern Warships"!"$PW_GUI_ICON_PATH/mw.png"!"":"FBTN" '@bash -c "button_click --normal PW_MW"' \
+    --field="   Metal War Online"!"$PW_GUI_ICON_PATH/mwo.png"!"":"FBTN" '@bash -c "button_click --normal PW_MWO"' \
+    --field="   Ankama Launcher"!"$PW_GUI_ICON_PATH/ankama.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANKAMA"' \
+    --field="   Indiegala Client"!"$PW_GUI_ICON_PATH/igclient.png"!"":"FBTN" '@bash -c "button_click --normal PW_IGCLIENT"' \
+    --field="   Plarium Play"!"$PW_GUI_ICON_PATH/plariumplay.png"!"":"FBTN" '@bash -c "button_click --normal PW_PLARIUM_PLAY"' \
+    --field="   Wargaming Game Center"!"$PW_GUI_ICON_PATH/wgc.png"!"":"FBTN" '@bash -c "button_click --normal PW_WGC"' \
+    --field="   OSU"!"$PW_GUI_ICON_PATH/osu.png"!"":"FBTN" '@bash -c "button_click --normal PW_OSU"' \
+    --field="   ITCH.IO"!"$PW_GUI_ICON_PATH/itch.png"!"":"FBTN" '@bash -c "button_click --normal PW_ITCH"' \
+    --field="   Steam (unstable)"!"$PW_GUI_ICON_PATH/steam.png"!"":"FBTN" '@bash -c "button_click --normal PW_STEAM"' \
+    --field="   Path of Exile"!"$PW_GUI_ICON_PATH/poe.png"!"":"FBTN" '@bash -c "button_click --normal PW_POE"' \
+    --field="   Guild Wars 2"!"$PW_GUI_ICON_PATH/gw2.png"!"":"FBTN" '@bash -c "button_click --normal PW_GUILD_WARS_2"' \
+    --field="   HoYoPlay"!"$PW_GUI_ICON_PATH/hoyoplay.png"!"":"FBTN" '@bash -c "button_click --normal PW_HO_YO_PLAY"' \
+    --field="   EA App (TEST)"!"$PW_GUI_ICON_PATH/eaapp.png"!"":"FBTN" '@bash -c "button_click --normal PW_EAAPP"' \
+    --field="   Battle Of Space Raiders"!"$PW_GUI_ICON_PATH/bsr.png"!"":"FBTN" '@bash -c "button_click --normal PW_BSR"' \
+    --field="   Black Desert Online (RU)"!"$PW_GUI_ICON_PATH/bdo.png"!"":"FBTN" '@bash -c "button_click --normal PW_BDO"' \
+    --field="   Pulse Online"!"$PW_GUI_ICON_PATH/pulseonline.png"!"":"FBTN" '@bash -c "button_click --normal PW_PULSE_ONLINE"' \
+    --field="   CatsLauncher (Front Edge)"!"$PW_GUI_ICON_PATH/catslauncher.png"!"":"FBTN" '@bash -c "button_click --normal PW_CATSLAUNCHER"' \
+    --field="   Russian Fishing 4"!"$PW_GUI_ICON_PATH/rf4launcher.png"!"":"FBTN" '@bash -c "button_click --normal PW_RUSSIAN_FISHING"' \
+    --field="   W3D Hub Launcher"!"$PW_GUI_ICON_PATH/w3dhub.png"!"":"FBTN" '@bash -c "button_click --normal PW_W3D_HUB"' \
+    --field="   Anomaly Zone"!"$PW_GUI_ICON_PATH/anomalyzone.png"!"":"FBTN" '@bash -c "button_click --normal PW_ANOMALY_ZONE"' \
+    --field="   Farlight 84"!"$PW_GUI_ICON_PATH/farlight84.png"!"":"FBTN" '@bash -c "button_click --normal PW_FARLIGHT84"' \
+    --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click --normal PW_SWL"' \
+    --field="   Blood and Soul"!"$PW_GUI_ICON_PATH/bloodandsoul.png"!"":"FBTN" '@bash -c "button_click --normal PW_BLOOD_AND_SOUL"' \
+    --field="   Star Conflict"!"$PW_GUI_ICON_PATH/starconflict.png"!"":"FBTN" '@bash -c "button_click --normal PW_STAR_CONFLICT"' \
+    --field="   GameXP"!"$PW_GUI_ICON_PATH/gamexp.png"!"":"FBTN" '@bash -c "button_click --normal PW_GAME_XP"' \
+    --field="   Lost Light"!"$PW_GUI_ICON_PATH/lostlight.png"!"":"FBTN" '@bash -c "button_click --normal PW_LOST_LIGHT"' \
     2>/dev/null &
-
-    # --field="   Secret World Legends (ENG)"!"$PW_GUI_ICON_PATH/swl.png"!"":"FBTN" '@bash -c "button_click PW_SWL"'
-    # --field="   Bethesda.net Launcher"!"$PW_GUI_ICON_PATH/bethesda.png"!"":"FBTN" '@bash -c "button_click PW_BETHESDA"'
-    # --field="   League of Legends"!"$PW_GUI_ICON_PATH/lol.png"!"":"FBTN" '@bash -c "button_click PW_LOL"'
 
     export START_FROM_PP_GUI="1"
     if [[ -z ${TAB_MAIN_MENU} ]] ; then
@@ -794,33 +761,32 @@ else
     fi
 
     if [[ -z "${PW_ALL_DF}" ]] ; then
-        "${pw_yad}" --key=$KEY --notebook --expand \
+        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos="bottom" \
-        --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "WINE SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[AUTOINSTALLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[EMULATORS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[WINE SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[PORTPROTON SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     else
-        "${pw_yad}" --key=$KEY --notebook --expand \
+        "${pw_yad}" --key=$KEY_MENU --notebook --expand \
         --gui-type="settings-notebook" --active-tab="${TAB_MAIN_MENU}" \
         --width="${PW_MAIN_SIZE_W}" --height="${PW_MAIN_SIZE_H}" --no-buttons \
         --window-icon="$PW_GUI_ICON_PATH/portproton.svg" \
         --title "PortProton-${install_ver} (${scripts_install_ver}${BRANCH_VERSION})" \
         --tab-pos="bottom" \
-        --tab="$(gettext "INSTALLED")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "AUTOINSTALLS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "EMULATORS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "WINE SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
-        --tab="$(gettext "PORTPROTON SETTINGS")"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
+        --tab="${translations[INSTALLED]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[AUTOINSTALLS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[EMULATORS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[WINE SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" \
+        --tab="${translations[PORTPROTON SETTINGS]}"!"$PW_GUI_ICON_PATH/$TAB_SIZE.png"!"" 2>/dev/null
         YAD_STATUS="$?"
     fi
-    unset TAB_MAIN_MENU
 
     if [[ "$YAD_STATUS" == "1" || "$YAD_STATUS" == "252" ]] ; then exit 0 ; fi
     pw_yad_set_form
@@ -843,7 +809,37 @@ if [[ -f "${PORTWINE_DB_FILE}" ]] ; then
     edit_db_from_gui PW_VULKAN_USE PW_WINE_USE PW_PREFIX_NAME
 fi
 
-[[ ! -z "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
+    gui_pw_reinstall_pp|open_changelog|\
+    128|gui_pw_update|gui_rm_portproton|\
+    change_loc|gui_open_scripts_from_backup|\
+    gui_credits|pw_start_cont_xterm)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="4"
+        else
+            export TAB_MAIN_MENU="5"
+        fi
+        ;;
+    gui_proton_downloader|WINETRICKS|\
+    116|pw_create_prefix_backup|\
+    gui_clear_pfx|WINEREG|WINECMD|\
+    WINEFILE|WINECFG|gui_wine_uninstaller)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="3"
+        else
+            export TAB_MAIN_MENU="4"
+        fi
+        ;;
+    pw_find_exe)
+        if [[ -z "${PW_ALL_DF}" ]] ; then
+            export TAB_MAIN_MENU="5"
+        else
+            export TAB_MAIN_MENU="1"
+        fi
+        ;;
+esac
+
+[[ -n "$PW_YAD_SET" ]] && case "$PW_YAD_SET" in
     98) portwine_delete_shortcut ;;
     100) portwine_create_shortcut ;;
     DEBUG|102) portwine_start_debug ;;
@@ -866,17 +862,20 @@ fi
     change_mirror) change_mirror ;;
     change_branch) change_branch ;;
     change_gui_start) change_gui_start ;;
+    change_download_grid) change_download_grid ;;
+    open_game_folder) open_game_folder ;;
     118) gui_edit_db ;;
     120) gui_vkbasalt ;;
     122) gui_mangohud ;;
     124) gui_dgvoodoo2 ;;
     126) gui_gamescope ;;
+    128) gui_userconf ;;
     pw_create_prefix_backup) pw_create_prefix_backup ;;
     gui_credits) gui_credits ;;
     pw_start_cont_xterm) pw_start_cont_xterm ;;
     pw_find_exe) pw_find_exe ;;
     PW_*) pw_autoinstall_from_db ;;
-    *.desktop) run_desktop_b_click ;;
+    *.desktop) button_click --desktop ;;
     1|252|*) exit 0 ;;
 esac
 
